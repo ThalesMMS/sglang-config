@@ -1,12 +1,12 @@
 #!/bin/bash
 #
 # Start script for SGLang Server
-# Supports multiple models: Llama 3.2 3B and Phi-4-mini
+# Supports multiple models: Llama 3.2 3B and Qwen 2.5 7B
 #
 # Usage:
 #   ./start-sglang.sh              # Interactive menu
 #   ./start-sglang.sh llama        # Direct Llama 3.2 3B
-#   ./start-sglang.sh phi4         # Direct Phi-4-mini
+#   ./start-sglang.sh qwen         # Direct Qwen 2.5 7B
 #
 
 set -e
@@ -30,23 +30,23 @@ NC='\033[0m'
 # Model configuration
 declare -A MODELS
 MODELS[llama]="unsloth/Llama-3.2-3B-Instruct"
-MODELS[phi4]="microsoft/Phi-4-mini-instruct"
+MODELS[qwen]="Qwen/Qwen2.5-7B-Instruct"
 
 declare -A MODEL_CONFIGS
 # Format: "context_length:max_running_requests:mem_fraction_static"
 # OPTIMIZED FOR RTX 5080 (16GB VRAM)
-MODEL_CONFIGS[llama]="65536:2:0.90"     # 3B model - 64K context, minimal concurrency (unsloth version uses ~14.5GB)
-MODEL_CONFIGS[phi4]="65536:2:0.90"      # 3.8B model - 64K context, minimal concurrency (model uses ~14.7GB)
+MODEL_CONFIGS[llama]="65536:2:0.90"     # 3B model - 64K context, minimal concurrency
+MODEL_CONFIGS[qwen]="32768:2:0.92"      # 7B model - 32K context, needs more VRAM (~14GB)
 
 # Tool call parsers for function calling support
 # See: https://docs.sglang.ai/advanced_features/tool_parser.html
 declare -A TOOL_PARSERS
 TOOL_PARSERS[llama]="llama3"            # For Llama 3.1/3.2/3.3 models
-TOOL_PARSERS[phi4]=""                   # Phi-4 doesn't have native tool calling support in SGLang yet
+TOOL_PARSERS[qwen]="qwen25"             # For Qwen 2.5 models - excellent tool calling
 
 declare -A MODEL_NAMES
 MODEL_NAMES[llama]="Llama 3.2 3B Instruct (Meta)"
-MODEL_NAMES[phi4]="Phi-4-mini-instruct (3.8B)"
+MODEL_NAMES[qwen]="Qwen 2.5 7B Instruct (Alibaba)"
 
 show_menu() {
     echo -e "${CYAN}=== SGLang Server - Model Selection ===${NC}"
@@ -54,13 +54,12 @@ show_menu() {
     echo "Available models:"
     echo ""
     echo -e "  ${GREEN}1)${NC} Llama 3.2 3B Instruct (Meta)"
-    echo "     - 3B params, ${GREEN}native tool calling support${NC}"
-    echo "     - VRAM: ~3GB | Context: 64K tokens"
+    echo "     - 3B params, ${GREEN}native tool calling${NC}"
+    echo "     - VRAM: ~6GB | Context: 64K tokens"
     echo ""
-    echo -e "  ${GREEN}2)${NC} Phi-4-mini-instruct (3.8B)"
-    echo "     - 3.8B params, excellent reasoning"
-    echo "     - VRAM: ~3GB | Context: 64K tokens"
-    echo -e "     - ${YELLOW}No native tool calling${NC}"
+    echo -e "  ${GREEN}2)${NC} Qwen 2.5 7B Instruct (Alibaba)"
+    echo "     - 7B params, ${GREEN}excellent tool calling${NC}"
+    echo "     - VRAM: ~14GB | Context: 32K tokens"
     echo ""
     echo -e "  ${YELLOW}0)${NC} Exit"
     echo ""
@@ -72,7 +71,7 @@ select_model() {
         read -p "Choose a model [1/2/0]: " choice
         case $choice in
             1) MODEL_KEY="llama"; break ;;
-            2) MODEL_KEY="phi4"; break ;;
+            2) MODEL_KEY="qwen"; break ;;
             0) echo "Exiting."; exit 0 ;;
             *) echo -e "${YELLOW}Invalid option. Try again.${NC}"; echo "" ;;
         esac
@@ -172,8 +171,8 @@ if [ -n "$1" ]; then
     # Argument passed directly
     case "$1" in
         llama|llama32|1) MODEL_KEY="llama" ;;
-        phi4|phi|2) MODEL_KEY="phi4" ;;
-        *) echo "Usage: $0 [llama|phi4]"; exit 1 ;;
+        qwen|qwen25|2) MODEL_KEY="qwen" ;;
+        *) echo "Usage: $0 [llama|qwen]"; exit 1 ;;
     esac
 else
     # Interactive menu
