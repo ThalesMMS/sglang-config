@@ -35,8 +35,14 @@ MODELS[phi4]="microsoft/Phi-4-mini-instruct"
 declare -A MODEL_CONFIGS
 # Format: "context_length:max_running_requests:mem_fraction_static"
 # OPTIMIZED FOR RTX 5080 (16GB VRAM)
-MODEL_CONFIGS[llama]="65536:32:0.92"    # 3B model - 64K context, high concurrency
-MODEL_CONFIGS[phi4]="65536:32:0.92"     # 3.8B model - 64K context, high concurrency
+MODEL_CONFIGS[llama]="65536:2:0.90"     # 3B model - 64K context, minimal concurrency (unsloth version uses ~14.5GB)
+MODEL_CONFIGS[phi4]="65536:2:0.90"      # 3.8B model - 64K context, minimal concurrency (model uses ~14.7GB)
+
+# Tool call parsers for function calling support
+# See: https://docs.sglang.ai/advanced_features/tool_parser.html
+declare -A TOOL_PARSERS
+TOOL_PARSERS[llama]="llama3"            # For Llama 3.1/3.2/3.3 models
+TOOL_PARSERS[phi4]=""                   # Phi-4 doesn't have native tool calling support in SGLang yet
 
 declare -A MODEL_NAMES
 MODEL_NAMES[llama]="Llama 3.2 3B Instruct (Meta)"
@@ -48,12 +54,13 @@ show_menu() {
     echo "Available models:"
     echo ""
     echo -e "  ${GREEN}1)${NC} Llama 3.2 3B Instruct (Meta)"
-    echo "     - 3B params, tool calling support"
-    echo "     - VRAM: ~3GB | Context: 128K tokens"
+    echo "     - 3B params, ${GREEN}native tool calling support${NC}"
+    echo "     - VRAM: ~3GB | Context: 64K tokens"
     echo ""
     echo -e "  ${GREEN}2)${NC} Phi-4-mini-instruct (3.8B)"
     echo "     - 3.8B params, excellent reasoning"
-    echo "     - VRAM: ~3GB | Context: 128K tokens"
+    echo "     - VRAM: ~3GB | Context: 64K tokens"
+    echo -e "     - ${YELLOW}No native tool calling${NC}"
     echo ""
     echo -e "  ${YELLOW}0)${NC} Exit"
     echo ""
@@ -112,6 +119,7 @@ start_server() {
     local model_id="${MODELS[$model_key]}"
     local model_name="${MODEL_NAMES[$model_key]}"
     local config="${MODEL_CONFIGS[$model_key]}"
+    local tool_parser="${TOOL_PARSERS[$model_key]}"
 
     # Parse config
     IFS=':' read -r context_length max_running_requests mem_fraction_static <<< "$config"
@@ -139,6 +147,14 @@ start_server() {
     # Build command
     # Note: FlashInfer removed - incompatible with PyTorch 2.9
     cmd="python -m sglang.launch_server --model-path $model_id --host 0.0.0.0 --port 8001 --context-length $context_length --max-running-requests $max_running_requests --mem-fraction-static $mem_fraction_static --dtype half"
+
+    # Add tool call parser if available for this model
+    if [ -n "$tool_parser" ]; then
+        cmd="$cmd --tool-call-parser $tool_parser"
+        echo -e "${CYAN}Tool calling enabled with parser: $tool_parser${NC}"
+    else
+        echo -e "${YELLOW}Note: Tool calling not available for this model${NC}"
+    fi
 
     echo ""
     echo "Command:"
