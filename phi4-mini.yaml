@@ -1,0 +1,23 @@
+# SGLang Configuration for Phi-4-mini-instruct
+# Usage: python -m sglang.launch_server --config phi4-mini.yaml
+
+# Model configuration
+model-path: microsoft/Phi-4-mini-instruct
+
+# Network settings
+host: 0.0.0.0
+port: 8000
+
+# Context and memory settings
+context-length: 16384         # Maximum context window (128K native, limited for memory)
+max-running-requests: 16      # Maximum concurrent requests
+mem-fraction-static: 0.90     # GPU memory utilization (90%)
+
+# Performance settings
+dtype: half                   # Use FP16 for efficiency
+attention-backend: flashinfer # Use FlashInfer for attention
+
+# Optional: Enable metrics and logging
+# enable-metrics: true
+# log-requests: true
+# log-level: info

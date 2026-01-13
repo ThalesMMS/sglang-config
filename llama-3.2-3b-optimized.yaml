@@ -1,0 +1,30 @@
+# SGLang Configuration for Llama 3.2 3B Instruct
+# OPTIMIZED FOR: NVIDIA RTX 5080 (16GB VRAM)
+# Usage: python -m sglang.launch_server --config llama-3.2-3b-optimized.yaml
+
+# Model configuration
+model-path: unsloth/Llama-3.2-3B-Instruct
+
+# Network settings
+host: 0.0.0.0
+port: 8000
+
+# Context and memory settings - OPTIMIZED FOR RTX 5080
+context-length: 65536         # 64K context (sweet spot for 16GB with high throughput)
+max-running-requests: 32      # Increased from 16 - 3B model is small enough
+mem-fraction-static: 0.92     # Can be more aggressive with 16GB
+
+# Performance settings - RTX 5080 SPECIFIC
+dtype: half                   # FP16 - could use FP8 if supported by model
+attention-backend: flashinfer # FlashInfer optimized for RTX 5080
+enable-torch-compile: true    # Enable PyTorch compilation for faster inference
+
+# Advanced optimizations for RTX 5080
+chunked-prefill-size: 8192   # Optimize prefill for large batches
+enable-cuda-graph: true       # CUDA graphs for lower latency
+cuda-graph-max-bs: 128        # Max batch size for CUDA graphs
+
+# Monitoring (optional)
+# enable-metrics: true
+# log-requests: true
+# log-level: info
