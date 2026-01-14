@@ -30,23 +30,28 @@ NC='\033[0m'
 # Model configuration
 declare -A MODELS
 MODELS[llama]="unsloth/Llama-3.2-3B-Instruct"
-MODELS[qwen]="Qwen/Qwen2.5-7B-Instruct"
+MODELS[qwen]="Qwen/Qwen2.5-7B-Instruct-AWQ"
 
 declare -A MODEL_CONFIGS
 # Format: "context_length:max_running_requests:mem_fraction_static"
 # OPTIMIZED FOR RTX 5080 (16GB VRAM)
 MODEL_CONFIGS[llama]="65536:2:0.90"     # 3B model - 64K context, minimal concurrency
-MODEL_CONFIGS[qwen]="32768:2:0.92"      # 7B model - 32K context, needs more VRAM (~14GB)
+MODEL_CONFIGS[qwen]="32768:1:0.85"      # 7B AWQ model - 16K context, 1 request (faster)
+
+# Extra flags for memory optimization (model-specific)
+declare -A EXTRA_FLAGS
+EXTRA_FLAGS[llama]=""
+EXTRA_FLAGS[qwen]=""  # AWQ model is small enough, no extra optimizations needed
 
 # Tool call parsers for function calling support
 # See: https://docs.sglang.ai/advanced_features/tool_parser.html
 declare -A TOOL_PARSERS
 TOOL_PARSERS[llama]="llama3"            # For Llama 3.1/3.2/3.3 models
-TOOL_PARSERS[qwen]="qwen25"             # For Qwen 2.5 models - excellent tool calling
+TOOL_PARSERS[qwen]="qwen"               # For Qwen 2.5 models - excellent tool calling
 
 declare -A MODEL_NAMES
 MODEL_NAMES[llama]="Llama 3.2 3B Instruct (Meta)"
-MODEL_NAMES[qwen]="Qwen 2.5 7B Instruct (Alibaba)"
+MODEL_NAMES[qwen]="Qwen 2.5 7B Instruct AWQ (Alibaba)"
 
 show_menu() {
     echo -e "${CYAN}=== SGLang Server - Model Selection ===${NC}"
@@ -57,9 +62,9 @@ show_menu() {
     echo "     - 3B params, ${GREEN}native tool calling${NC}"
     echo "     - VRAM: ~6GB | Context: 64K tokens"
     echo ""
-    echo -e "  ${GREEN}2)${NC} Qwen 2.5 7B Instruct (Alibaba)"
-    echo "     - 7B params, ${GREEN}excellent tool calling${NC}"
-    echo "     - VRAM: ~14GB | Context: 32K tokens"
+    echo -e "  ${GREEN}2)${NC} Qwen 2.5 7B Instruct AWQ (Alibaba)"
+    echo "     - 7B params quantized 4-bit, ${GREEN}excellent tool calling${NC}"
+    echo "     - VRAM: ~4GB | Context: 32K tokens"
     echo ""
     echo -e "  ${YELLOW}0)${NC} Exit"
     echo ""
@@ -119,6 +124,7 @@ start_server() {
     local model_name="${MODEL_NAMES[$model_key]}"
     local config="${MODEL_CONFIGS[$model_key]}"
     local tool_parser="${TOOL_PARSERS[$model_key]}"
+    local extra_flags="${EXTRA_FLAGS[$model_key]}"
 
     # Parse config
     IFS=':' read -r context_length max_running_requests mem_fraction_static <<< "$config"
@@ -153,6 +159,12 @@ start_server() {
         echo -e "${CYAN}Tool calling enabled with parser: $tool_parser${NC}"
     else
         echo -e "${YELLOW}Note: Tool calling not available for this model${NC}"
+    fi
+
+    # Add extra flags for memory optimization
+    if [ -n "$extra_flags" ]; then
+        cmd="$cmd $extra_flags"
+        echo -e "${CYAN}Memory optimizations: $extra_flags${NC}"
     fi
 
     echo ""
