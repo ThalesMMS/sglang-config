@@ -10,11 +10,11 @@ This directory contains configuration files for running SGLang, a fast serving f
   - Tool calling support
   - VRAM usage: ~3GB
 
-- **Phi-4-mini-instruct** (microsoft/Phi-4-mini-instruct)
-  - 3.8B parameters
-  - Native 128K context window
-  - Excellent reasoning capabilities
-  - VRAM usage: ~3GB
+- **Qwen 2.5 7B Instruct AWQ** (Qwen/Qwen2.5-7B-Instruct-AWQ)
+  - 7B parameters (4-bit quantized)
+  - Native 32K context window
+  - Excellent tool calling capabilities
+  - VRAM usage: ~4GB
 
 ## Quick Start
 
@@ -43,12 +43,12 @@ This will:
 
 Choose from the menu:
 1. Llama 3.2 3B Instruct
-2. Phi-4-mini-instruct
+2. Qwen 2.5 7B Instruct AWQ
 
 #### Direct Launch
 ```bash
 ./start-sglang.sh llama    # Launch Llama 3.2 3B
-./start-sglang.sh phi4     # Launch Phi-4-mini
+./start-sglang.sh qwen      # Launch Qwen 2.5 7B
 ```
 
 #### Using YAML Configuration
@@ -56,7 +56,7 @@ Choose from the menu:
 source ~/sglang-env/bin/activate
 python -m sglang.launch_server --config llama-3.2-3b.yaml
 # or
-python -m sglang.launch_server --config phi4-mini.yaml
+python -m sglang.launch_server --config qwen2.5-7b.yaml
 ```
 
 ### Testing the Server
@@ -104,7 +104,7 @@ sudo journalctl -u sglang -f
 
 Both vLLM and SGLang are configured with equivalent settings:
 
-- **Context Length**: 16384 tokens (limited from native 128K for memory efficiency)
+- **Context Length**: 16384 tokens (limited from native 128K/32K for memory efficiency)
 - **Max Concurrent Requests**: 16
 - **GPU Memory Utilization**: 90%
 - **Port**: 8000
@@ -168,7 +168,7 @@ print(response.choices[0].message.content)
 
 ### Custom Context Length
 
-To use the full 128K context (requires more VRAM):
+To use the full context (requires more VRAM):
 
 ```bash
 python -m sglang.launch_server \
@@ -178,6 +178,18 @@ python -m sglang.launch_server \
   --context-length 131072 \
   --max-running-requests 8 \
   --mem-fraction-static 0.95
+```
+
+For Qwen 2.5 7B (32K context max):
+
+```bash
+python -m sglang.launch_server \
+  --model-path Qwen/Qwen2.5-7B-Instruct-AWQ \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --context-length 32768 \
+  --max-running-requests 4 \
+  --mem-fraction-static 0.90
 ```
 
 ### Enable Metrics and Logging
@@ -199,6 +211,16 @@ For tensor parallelism across multiple GPUs:
 ```bash
 python -m sglang.launch_server \
   --model-path unsloth/Llama-3.2-3B-Instruct \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --tensor-parallel-size 2
+```
+
+For Qwen 2.5 7B with AWQ quantization:
+
+```bash
+python -m sglang.launch_server \
+  --model-path Qwen/Qwen2.5-7B-Instruct-AWQ \
   --host 0.0.0.0 \
   --port 8000 \
   --tensor-parallel-size 2
@@ -265,7 +287,7 @@ Increase performance:
 - `start-sglang.sh` - Interactive server launcher
 - `test-sglang.sh` - Server testing script
 - `llama-3.2-3b.yaml` - Llama 3.2 3B configuration
-- `phi4-mini.yaml` - Phi-4-mini configuration
+- `qwen2.5-7b.yaml` - Qwen 2.5 7B configuration
 - `README.md` - This file
 
 ## Additional Resources
@@ -278,4 +300,4 @@ Increase performance:
 
 This configuration follows the same license as the underlying models:
 - Llama 3.2: Llama 3.2 Community License
-- Phi-4: MIT License
+- Qwen 2.5: Apache 2.0 License
